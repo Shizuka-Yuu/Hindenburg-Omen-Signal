@@ -1,0 +1,33 @@
+name: WSJ Markets Diary Scraper
+
+on:
+  schedule:
+    # 毎週月曜日から金曜日の UTC 22:00 (日本時間 翌午前7:00 / 米東部時間 午後5:00 または 午後6:00)
+    # 米市場クローズ(16:00 EST)からしばらく経ってデータが完全に確定した時間に実行します。
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: # GitHubのUIから手動実行できるようにする
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Scraper
+        env:
+          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
+        run: node scrape.js

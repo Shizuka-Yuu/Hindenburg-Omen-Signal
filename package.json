@@ -1,0 +1,13 @@
+{
+  "name": "hindenburg-omen-signal-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes WSJ Markets Diary and sends it to Google Sheets via GAS",
+  "main": "scrape.js",
+  "type": "module",
+  "scripts": {
+    "start": "node scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
