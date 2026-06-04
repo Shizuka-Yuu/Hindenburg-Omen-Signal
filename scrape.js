@@ -24,20 +24,16 @@ async function run() {
     console.log('Waiting for elements to load...');
     await page.waitForTimeout(5000);
     
-    // Extract tables
-    const tableData = await page.evaluate(() => {
+    // Extract tables and timestamp text from page context
+    const { tableData, timestampText } = await page.evaluate(() => {
+      // Extract tables
       const tables = Array.from(document.querySelectorAll('table'));
-      
-      return tables.map((table, tableIdx) => {
-        // Try to get headers
+      const tablesResult = tables.map((table, tableIdx) => {
         const headers = Array.from(table.querySelectorAll('th')).map(th => th.innerText.trim());
-        
-        // Get all rows
         const trs = Array.from(table.querySelectorAll('tr'));
-        const rows = trs.map(tr => {
-          const cells = Array.from(tr.querySelectorAll('td, th')).map(td => td.innerText.trim());
-          return cells;
-        }).filter(r => r.length > 0);
+        const rows = trs.map(tr => 
+          Array.from(tr.querySelectorAll('td, th')).map(td => td.innerText.trim())
+        ).filter(r => r.length > 0);
         
         return {
           tableIdx,
@@ -45,12 +41,55 @@ async function run() {
           rows
         };
       });
+      
+      // Extract timestamp text near Markets Diary / Trading Diary header
+      let tsText = '';
+      const header = Array.from(document.querySelectorAll('h3')).find(h => 
+        h.innerText.trim() === 'Markets Diary' || h.innerText.trim() === 'Trading Diary'
+      );
+      if (header) {
+        const container = header.closest('div');
+        if (container) {
+          const tsEl = container.querySelector('span[class*="timestamp"], div[class*="timestamp"]');
+          if (tsEl) {
+            tsText = tsEl.innerText.trim();
+          }
+        }
+      }
+      
+      return {
+        tableData: tablesResult,
+        timestampText: tsText
+      };
     });
     
     console.log(`Found ${tableData.length} tables on the page.`);
+    console.log(`Extracted timestamp text: "${timestampText}"`);
+    
+    // Parse the extracted timestamp
+    let formattedDate = parseWSJTimestamp(timestampText);
+    if (!formattedDate) {
+      console.warn('Could not parse timestamp from page. Falling back to current New York time.');
+      const nyDateFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = nyDateFormatter.formatToParts(new Date());
+      const year = parts.find(p => p.type === 'year').value;
+      const month = parts.find(p => p.type === 'month').value;
+      const day = parts.find(p => p.type === 'day').value;
+      const hour = parts.find(p => p.type === 'hour').value;
+      const minute = parts.find(p => p.type === 'minute').value;
+      formattedDate = `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+    console.log(`Final parsed date/time: "${formattedDate}"`);
     
     // Find the Markets Diary table
-    // The Markets Diary table should contain rows with text like "Issues", "Advancing", "Declining", "New Highs", "Share Volume"
     let diaryTable = null;
     for (const t of tableData) {
       const fullText = JSON.stringify(t.rows).toLowerCase();
@@ -78,7 +117,7 @@ async function run() {
     console.log(JSON.stringify(diaryTable.rows, null, 2));
     
     // Parse the table rows dynamically
-    const parsedData = parseDiaryTable(diaryTable.rows);
+    const parsedData = parseDiaryTable(diaryTable.rows, formattedDate);
     console.log('Parsed Data:', JSON.stringify(parsedData, null, 2));
     
     // Send to Google Apps Script if URL is provided
@@ -108,14 +147,39 @@ async function run() {
   }
 }
 
-function parseDiaryTable(rows) {
-  // We need to identify columns for NYSE and Nasdaq.
-  // The header row is usually the first row or contains "NYSE" and "Nasdaq"
+function parseWSJTimestamp(text) {
+  if (!text) return null;
+  // Regex to match "4:15 PM EDT 6/03/26"
+  const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*(?:[A-Z]{3,4})?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
+  if (match) {
+    const hour12 = parseInt(match[1], 10);
+    const minute = match[2];
+    const ampm = match[3].toUpperCase();
+    const month = parseInt(match[4], 10);
+    const day = parseInt(match[5], 10);
+    const yearShort = parseInt(match[6], 10);
+    const year = yearShort < 100 ? 2000 + yearShort : yearShort;
+    
+    let hour24 = hour12;
+    if (ampm === 'PM' && hour12 < 12) {
+      hour24 += 12;
+    } else if (ampm === 'AM' && hour12 === 12) {
+      hour24 = 0;
+    }
+    
+    // ISO Format: YYYY-MM-DD HH:mm (e.g., 2026-06-03 16:15)
+    // We pad single digit month/day/hour to follow proper ISO format
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)} ${pad(hour24)}:${minute}`;
+  }
+  return null;
+}
+
+function parseDiaryTable(rows, date) {
   let nyseColIdx = -1;
   let nasdaqColIdx = -1;
   
   // Find column indexes for NYSE and Nasdaq
-  // Some rows might contain headers like ["DIARY", "NYSE", "Nasdaq", ...]
   for (const row of rows) {
     const isHeaderRow = row.some(cell => cell.toLowerCase().includes('nyse') || cell.toLowerCase().includes('nasdaq'));
     if (isHeaderRow) {
@@ -131,26 +195,13 @@ function parseDiaryTable(rows) {
     }
   }
   
-  // Fallbacks if not found explicitly by headers
   if (nyseColIdx === -1) nyseColIdx = 1;
-  if (nasdaqColIdx === -1) nasdaqColIdx = 2; // Nasdaq is usually the next column (or column 2 / 3)
+  if (nasdaqColIdx === -1) nasdaqColIdx = 2;
   
   console.log(`Detected columns - NYSE Index: ${nyseColIdx}, Nasdaq Index: ${nasdaqColIdx}`);
   
-  const nyDateFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const parts = nyDateFormatter.formatToParts(new Date());
-  const year = parts.find(p => p.type === 'year').value;
-  const month = parts.find(p => p.type === 'month').value;
-  const day = parts.find(p => p.type === 'day').value;
-  const formattedDate = `${year}-${month}-${day}`;
-
   const result = {
-    date: formattedDate,
+    date: date,
     nyse: {
       issues: {},
       new_highs_lows: {},
@@ -171,21 +222,23 @@ function parseDiaryTable(rows) {
     const label = row[0].trim();
     const labelLower = label.toLowerCase();
     
-    // Check if this row changes the current section
-    if (labelLower.includes('issues') && !labelLower.includes('new') && !labelLower.includes('volume')) {
-      currentSection = 'issues';
-      continue;
-    } else if (labelLower.includes('issues at') || labelLower.includes('new highs') || labelLower.includes('new lows')) {
-      currentSection = 'new_highs_lows';
-    } else if (labelLower.includes('share volume') || labelLower.includes('volume')) {
-      currentSection = 'share_volume';
-      continue;
+    // Check if the row has any actual values. Section headers have length 1 or all other cells empty
+    const hasValues = row.slice(1).some(cell => cell && cell.trim() !== '');
+    
+    if (!hasValues) {
+      if (labelLower === 'issues') {
+        currentSection = 'issues';
+      } else if (labelLower === 'issues at' || labelLower.includes('new highs') || labelLower.includes('new lows')) {
+        currentSection = 'new_highs_lows';
+      } else if (labelLower === 'share volume' || labelLower.includes('volume')) {
+        currentSection = 'share_volume';
+      }
+      continue; // Skip section header rows from data processing
     }
     
     // Clean and parse numbers
     const cleanNumber = (val) => {
       if (!val) return 0;
-      // Remove commas, spaces, % etc.
       const cleaned = val.replace(/,/g, '').trim();
       const num = parseInt(cleaned, 10);
       return isNaN(num) ? 0 : num;

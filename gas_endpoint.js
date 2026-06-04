@@ -28,9 +28,9 @@ function doPost(e) {
     
     // スプレッドシートとシートの取得 (存在しなければ自動生成)
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("Markets Diary");
+    let sheet = ss.getSheetByName("Markets_Diary");
     if (!sheet) {
-      sheet = ss.insertSheet("Markets Diary");
+      sheet = ss.insertSheet("Markets_Diary");
     }
     
     // ヘッダーの定義
@@ -74,27 +74,30 @@ function doPost(e) {
       postData.nasdaq.share_volume.unchanged
     ];
     
-    // 重複チェック: 最終行のDateが同じ場合、データを追記するのではなく最終行を上書きする
+    // 重複チェック: 最終行のDate（先頭10文字の YYYY-MM-DD 部分）が同じ場合、データを追記するのではなく最終行を上書きする
     const lastRow = sheet.getLastRow();
     let isDuplicate = false;
     
     if (lastRow > 1) {
       const lastDateVal = sheet.getRange(lastRow, 1).getValue();
-      let lastDateStr = "";
+      let lastDateCal = "";
       
       if (lastDateVal instanceof Date) {
         // Date型の場合は YYYY-MM-DD 形式にフォーマット
         const y = lastDateVal.getFullYear();
         const m = ("0" + (lastDateVal.getMonth() + 1)).slice(-2);
         const d = ("0" + lastDateVal.getDate()).slice(-2);
-        lastDateStr = y + "-" + m + "-" + d;
+        lastDateCal = y + "-" + m + "-" + d;
       } else {
-        lastDateStr = String(lastDateVal).trim();
+        // 文字列の場合は先頭10文字を取得
+        lastDateCal = String(lastDateVal).trim().substring(0, 10);
       }
       
-      if (lastDateStr === date) {
+      const incomingDateCal = date.substring(0, 10);
+      
+      if (lastDateCal === incomingDateCal) {
         isDuplicate = true;
-        // 最終行のセル範囲に新しいデータを上書き
+        // 最終行 of セル範囲に新しいデータを上書き
         const rowRange = sheet.getRange(lastRow, 1, 1, headers.length);
         rowRange.setValues([rowValues]);
       }
@@ -127,10 +130,10 @@ function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss) {
     console.log("スプレッドシートの紐付けに成功しました: " + ss.getName());
-    let sheet = ss.getSheetByName("Markets Diary");
+    let sheet = ss.getSheetByName("Markets_Diary");
     if (!sheet) {
-      sheet = ss.insertSheet("Markets Diary");
-      console.log("シート 'Markets Diary' を作成しました。");
+      sheet = ss.insertSheet("Markets_Diary");
+      console.log("シート 'Markets_Diary' を作成しました。");
     }
   } else {
     console.error("スプレッドシートへのアクセスに失敗しました。このスクリプトがスプレッドシートの「拡張機能」>「Apps Script」から作成されているか確認してください。");
