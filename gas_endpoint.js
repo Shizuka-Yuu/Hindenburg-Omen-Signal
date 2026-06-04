@@ -120,3 +120,19 @@ function doPost(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+// 認証・セットアップ用関数
+// 初回のみ、この関数を選択してエディタの「実行」ボタンを押し、権限の承認を行ってください。
+function setup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) {
+    console.log("スプレッドシートの紐付けに成功しました: " + ss.getName());
+    let sheet = ss.getSheetByName("Markets Diary");
+    if (!sheet) {
+      sheet = ss.insertSheet("Markets Diary");
+      console.log("シート 'Markets Diary' を作成しました。");
+    }
+  } else {
+    console.error("スプレッドシートへのアクセスに失敗しました。このスクリプトがスプレッドシートの「拡張機能」>「Apps Script」から作成されているか確認してください。");
+  }
+}
