@@ -30,7 +30,13 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
-      - name: Run Scraper
+      - name: Run WSJ Scraper
+        continue-on-error: true
         env:
           GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
         run: node scrape.js
+
+      - name: Run JPX Scraper
+        env:
+          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
+        run: node scrape_jpx.js

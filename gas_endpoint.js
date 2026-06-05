@@ -24,55 +24,106 @@ function doPost(e) {
     
     // 送信されてきたJSONをパース
     const postData = JSON.parse(e.postData.contents);
-    const date = postData.date; // 例: "2026-06-04"
+    const date = postData.date; // 例: "2026-06-04" or "2026-06-05 18:15"
     
-    // スプレッドシートとシートの取得 (存在しなければ自動生成)
+    // スプレッドシートとシートの取得 (データタイプによって分岐)
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName("Markets_Diary");
-    if (!sheet) {
-      sheet = ss.insertSheet("Markets_Diary");
-    }
+    let sheet;
+    let headers;
+    let rowValues;
     
-    // ヘッダーの定義
-    const headers = [
-      "Date",
-      "NYSE Issues Advancing", "NYSE Issues Declining", "NYSE Issues Unchanged", "NYSE Issues Total",
-      "NYSE New Highs", "NYSE New Lows",
-      "NYSE Share Volume Total", "NYSE Share Volume Advancing", "NYSE Share Volume Declining", "NYSE Share Volume Unchanged",
-      "NASDAQ Issues Advancing", "NASDAQ Issues Declining", "NASDAQ Issues Unchanged", "NASDAQ Issues Total",
-      "NASDAQ New Highs", "NASDAQ New Lows",
-      "NASDAQ Share Volume Total", "NASDAQ Share Volume Advancing", "NASDAQ Share Volume Declining", "NASDAQ Share Volume Unchanged"
-    ];
+    if (postData.type === "jpx") {
+      sheet = ss.getSheetByName("JPX_Market_Data");
+      if (!sheet) {
+        sheet = ss.insertSheet("JPX_Market_Data");
+      }
+      
+      headers = [
+        "Date",
+        "Nikkei 225 Close", "TOPIX Close", "Growth 250 Close",
+        "Prime Volume", "Prime Value", "Prime Market Cap", "Prime Advanced", "Prime Declined", "Prime Unchanged", "Prime Unknown", "Prime Listed Companies", "Prime Listed Issues",
+        "Standard Volume", "Standard Value", "Standard Market Cap", "Standard Advanced", "Standard Declined", "Standard Unchanged", "Standard Unknown", "Standard Listed Companies", "Standard Listed Issues",
+        "Growth Volume", "Growth Value", "Growth Market Cap", "Growth Advanced", "Growth Declined", "Growth Unchanged", "Growth Unknown", "Growth Listed Companies", "Growth Listed Issues"
+      ];
+      
+      rowValues = [
+        date,
+        postData.indices.nikkei225,
+        postData.indices.topix,
+        postData.indices.growth250,
+        postData.prime.volume,
+        postData.prime.turnover,
+        postData.prime.marketValue,
+        postData.prime.advanced,
+        postData.prime.declined,
+        postData.prime.unchanged,
+        postData.prime.unknown,
+        postData.prime.listedCompanies,
+        postData.prime.listedIssues,
+        postData.standard.volume,
+        postData.standard.turnover,
+        postData.standard.marketValue,
+        postData.standard.advanced,
+        postData.standard.declined,
+        postData.standard.unchanged,
+        postData.standard.unknown,
+        postData.standard.listedCompanies,
+        postData.standard.listedIssues,
+        postData.growth.volume,
+        postData.growth.turnover,
+        postData.growth.marketValue,
+        postData.growth.advanced,
+        postData.growth.declined,
+        postData.growth.unchanged,
+        postData.growth.unknown,
+        postData.growth.listedCompanies,
+        postData.growth.listedIssues
+      ];
+    } else {
+      sheet = ss.getSheetByName("Markets_Diary");
+      if (!sheet) {
+        sheet = ss.insertSheet("Markets_Diary");
+      }
+      
+      headers = [
+        "Date",
+        "NYSE Issues Advancing", "NYSE Issues Declining", "NYSE Issues Unchanged", "NYSE Issues Total",
+        "NYSE New Highs", "NYSE New Lows",
+        "NYSE Share Volume Total", "NYSE Share Volume Advancing", "NYSE Share Volume Declining", "NYSE Share Volume Unchanged",
+        "NASDAQ Issues Advancing", "NASDAQ Issues Declining", "NASDAQ Issues Unchanged", "NASDAQ Issues Total",
+        "NASDAQ New Highs", "NASDAQ New Lows",
+        "NASDAQ Share Volume Total", "NASDAQ Share Volume Advancing", "NASDAQ Share Volume Declining", "NASDAQ Share Volume Unchanged"
+      ];
+      
+      rowValues = [
+        date,
+        postData.nyse.issues.advancing,
+        postData.nyse.issues.declining,
+        postData.nyse.issues.unchanged,
+        postData.nyse.issues.total,
+        postData.nyse.new_highs_lows.new_highs,
+        postData.nyse.new_highs_lows.new_lows,
+        postData.nyse.share_volume.total,
+        postData.nyse.share_volume.advancing,
+        postData.nyse.share_volume.declining,
+        postData.nyse.share_volume.unchanged,
+        postData.nasdaq.issues.advancing,
+        postData.nasdaq.issues.declining,
+        postData.nasdaq.issues.unchanged,
+        postData.nasdaq.issues.total,
+        postData.nasdaq.new_highs_lows.new_highs,
+        postData.nasdaq.new_highs_lows.new_lows,
+        postData.nasdaq.share_volume.total,
+        postData.nasdaq.share_volume.advancing,
+        postData.nasdaq.share_volume.declining,
+        postData.nasdaq.share_volume.unchanged
+      ];
+    }
     
     // 初めての実行時にヘッダーを挿入
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(headers);
     }
-    
-    // 追加するデータの配列を作成
-    const rowValues = [
-      date,
-      postData.nyse.issues.advancing,
-      postData.nyse.issues.declining,
-      postData.nyse.issues.unchanged,
-      postData.nyse.issues.total,
-      postData.nyse.new_highs_lows.new_highs,
-      postData.nyse.new_highs_lows.new_lows,
-      postData.nyse.share_volume.total,
-      postData.nyse.share_volume.advancing,
-      postData.nyse.share_volume.declining,
-      postData.nyse.share_volume.unchanged,
-      postData.nasdaq.issues.advancing,
-      postData.nasdaq.issues.declining,
-      postData.nasdaq.issues.unchanged,
-      postData.nasdaq.issues.total,
-      postData.nasdaq.new_highs_lows.new_highs,
-      postData.nasdaq.new_highs_lows.new_lows,
-      postData.nasdaq.share_volume.total,
-      postData.nasdaq.share_volume.advancing,
-      postData.nasdaq.share_volume.declining,
-      postData.nasdaq.share_volume.unchanged
-    ];
     
     // 重複チェック: 最終行のDate（先頭10文字の YYYY-MM-DD 部分）が同じ場合、データを追記するのではなく最終行を上書きする
     const lastRow = sheet.getLastRow();
@@ -125,15 +176,19 @@ function doPost(e) {
 }
 
 // 認証・セットアップ用関数
-// 初回のみ、この関数を選択してエディタの「実行」ボタンを押し、権限の承認を行ってください。
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss) {
     console.log("スプレッドシートの紐付けに成功しました: " + ss.getName());
-    let sheet = ss.getSheetByName("Markets_Diary");
-    if (!sheet) {
-      sheet = ss.insertSheet("Markets_Diary");
+    let sheet1 = ss.getSheetByName("Markets_Diary");
+    if (!sheet1) {
+      sheet1 = ss.insertSheet("Markets_Diary");
       console.log("シート 'Markets_Diary' を作成しました。");
+    }
+    let sheet2 = ss.getSheetByName("JPX_Market_Data");
+    if (!sheet2) {
+      sheet2 = ss.insertSheet("JPX_Market_Data");
+      console.log("シート 'JPX_Market_Data' を作成しました。");
     }
   } else {
     console.error("スプレッドシートへのアクセスに失敗しました。このスクリプトがスプレッドシートの「拡張機能」>「Apps Script」から作成されているか確認してください。");
