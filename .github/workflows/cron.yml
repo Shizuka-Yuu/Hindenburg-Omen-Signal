@@ -1,16 +1,6 @@
 name: WSJ Markets Diary Scraper
 
 on:
-  schedule:
-    # 毎週月曜日から金曜日の UTC 20:30 (日本時間 翌午前5:30 / 米東部時間 午後4:30 EDT)
-    # 米市場クローズ(16:00 EDT) → 16:15 EDT WSJ MarketDiary更新
-   
-    # 【夏時間用】3月第2日曜日〜11月第1日曜日まで有効
-    - cron: '28 20 * * 1-5'
-    
-    # 【冬時間用メモ】11月になったら上記をコメントアウトし、以下を有効化する
-    # - cron: '30 21 * * 1-5' # 日本時間 翌午前6:30 (冬時間の米市場クローズ16:00 EST → WSJ更新6:15 ESTの15分後)
-  
   workflow_dispatch: # GitHubのUIから手動実行できるようにする
 
 env:
