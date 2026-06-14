@@ -7,7 +7,7 @@
 <a name="english"></a>
 ## English
 
-The **Market Stress Tracker (MST)** is an analytical framework designed to continuously monitor underlying structural distortions and systemic stress in the stock market. Deeply inspired by the constituent indicators of the traditional "Hindenburg Omen," MST re-engineers a binary crash-prediction signal into a high-fidelity, continuous environmental tracker.
+The **Market Stress Tracker (MST)** is an analytical framework designed to continuously monitor underlying structural distortions and systemic stress in the stock market. Deeply inspired by the constituent indicators of the traditional "Hindenburg Omen," MST re-engineers a binary crash-prediction signal into a continuous environmental tracker.
 
 ![Market Stress Tracker Dashboard](assets/market-monitor.png)
 
@@ -98,7 +98,7 @@ See the [LICENSE](LICENSE) file for the full legal text.
 <a name="japanese"></a>
 ## 日本語
 
-**Market Stress Tracker (MST)** は、株式市場内部の構造的な歪みやストレス状態を継続的に観察・評価するために設計された分析フレームワークです。伝統的な「ヒンデンブルグ・オーメン」の構成指標から着想を得ており、単なる「暴落シグナル（点灯／消灯）」を一歩進め、高精度で連続的な環境認識トラッカーへと再構築しました。
+**Market Stress Tracker (MST)** は、株式市場内部の構造的な歪みやストレス状態を継続的に観察・評価するために設計された分析フレームワークです。伝統的な「ヒンデンブルグ・オーメン」の構成指標から着想を得ており、単なる「暴落シグナル（点灯／消灯）」を一歩進め、連続的な環境認識トラッカーへと再構築しました。
 
 ![Market Stress Tracker Dashboard](assets/market-monitor.png)
 
