@@ -1,7 +1,7 @@
 name: WSJ Markets Diary Scraper
 
 on:
-  workflow_dispatch: # GitHubのUIから手動実行できるようにする
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -9,6 +9,10 @@ env:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    # ★ Playwright公式コンテナを指定（インストール処理が不要になります）
+    container:
+      image: mcr.microsoft.com/playwright:v1.49.0-noble
+      options: --user 1001
 
     steps:
       - name: Checkout repository
@@ -23,8 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
-        run: npx playwright install chromium --with-deps
+      # ★ Install Playwright Chromium のステップは削除します（コンテナに同梱済みのため）
 
       - name: Run WSJ Scraper
         continue-on-error: true
