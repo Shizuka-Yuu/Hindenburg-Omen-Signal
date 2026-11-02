@@ -8,7 +8,8 @@ env:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    # ★ ubuntu-latest の代わりに、動作が安定している ubuntu-24.04 に固定します
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22 # 安定稼働のため Node.js 22 を指定
           cache: 'npm'
 
       - name: Install dependencies
